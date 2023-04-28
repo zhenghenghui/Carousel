@@ -20,33 +20,35 @@
             <!-- 数字切换按钮 -->
             <div class="num-box">
                 <ul class="num-ul" ref="ulNumDom">
-                    <li v-for="(item, index) in new Array(len).fill(0)" :key="index" :="index">{{index+1}}</li>
+                    <li class="li-num" v-for="(item, index) in new Array(len).fill(0)" :key="index" :="index">{{index+1}}</li>
                 </ul>
             </div>
         </div>
 </template>
 <script >
-import {  ref, defineComponent, onMounted } from 'vue'
+import {  ref, defineComponent, onMounted, onUpdated, reactive } from 'vue'
 import axios from 'axios'
 
 export default defineComponent({
     setup(props) {
         const ulImgDom = ref(null)
         const ulNumDom = ref(null)
-        const curIndex = ref(0)
+        let curIndex = ref(0)
         let len = ref(0)
-        let numList = []
+        let numList
         let width = 0
         let mediaRecorder
         onMounted(() => {
-            numList = ulNumDom.value.getElementsByTagName("li")
             const imgList = ulImgDom.value.getElementsByClassName("li-img")
             len.value = imgList.length
             width = imgList[0].offsetWidth
-
             navigator.mediaDevices.getUserMedia({audio: true}).then(stream=>{
                 let chunks = [];
-                mediaRecorder = new MediaRecorder(stream);
+                const options = {
+                    mimeType: 'audio/webm',
+                    audioBitsPerSecond: 16000
+                };
+                mediaRecorder = new MediaRecorder(stream,options);
                 
                 // 录音开始事件监听（即调用 mediaRecorder.start()时会触发该事件）
                 mediaRecorder.onstart = () =>{
@@ -54,31 +56,31 @@ export default defineComponent({
                 }
                 // 录音可用事件监听，发生于mediaRecorder.stop()调用后，mediaRecorder.onstop 前
                 mediaRecorder.ondataavailable = (e) =>{
-                    console.log("dataavailable")
-                    console.log(e)
+                    // console.log(e)
                     chunks.push(e.data)
                 }
                 
                 // 录音结束事件监听，发生在mediaRecorder.stop()和 mediaRecorder.ondataavailable 调用后
                 mediaRecorder.onstop = () =>{
-                    console.log("record end")
+                    // console.log("record end")
                     // 获取到录音的blob
-                    let blob = new Blob(chunks,{type:"audio/wav;codecs=opus"}); 
+                    let blob = new Blob(chunks,{type:"audio/webm;codecs=opus"}); 
                     
                     //  将blob转换为file对象，名字可以自己改，一般用于需要将文件上传到后台的情况
-                    let file = new window.File([blob],"record.wav");
-                    console.log(file.name)
+                    let file = new window.File([blob],"record.webm");
                     let formData=new FormData();
                     formData.append('file',file,file.name)
                     submitFile(formData)
                     // 将blob转换为地址，一般用于页面上面的回显，这个url可以直接被 audio 标签使用
                     let url = (window.URL || window.webkitURL).createObjectURL(blob);
-                    console.log(url)
-                    console.log(file)
                 }
             })
         })
 
+        onUpdated(() => {
+            numList = ulNumDom.value.getElementsByClassName("li-num")
+            numList[curIndex.value].style.backgroundColor = "black";
+        })
         function prevImg() {
             ulImgDom.value.style.transition = "0.3s";
             numList[curIndex.value].style.backgroundColor = ""; // 清空上一个数字按钮样式
@@ -88,6 +90,9 @@ export default defineComponent({
             } else {
                 --curIndex.value;
             }
+            console.log('curIndex:',curIndex.value)
+            console.log('ulImgDom:',ulImgDom.value)
+
             ulImgDom.value.style.left = `-${curIndex.value * width}px`; // 根据curIndex设置偏移量从而控制图片显示
             numList[curIndex.value].style.backgroundColor = "black";
         }
@@ -107,7 +112,7 @@ export default defineComponent({
         }
 
         function start() {
-            console.log('start')
+            // console.log('start')
             console.log(mediaRecorder)
             mediaRecorder.start()
         }
@@ -117,7 +122,13 @@ export default defineComponent({
 
         function submitFile(formData) {
             axios.post('/api/getFile', formData).then(res => {
-                console.log(res)
+                const context = res.data.context
+                console.log('context:',context)
+                if(context.includes('上一张')){
+                    prevImg()
+                }else if(context.includes('下一张')){
+                    nextImg()
+                }
             }).catch(err => {
                 console.log(err)
             })

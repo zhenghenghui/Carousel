@@ -82,8 +82,10 @@ export default defineComponent({
             numList[curIndex.value].style.backgroundColor = "black";
         })
         function prevImg() {
+            console.log(99)
             ulImgDom.value.style.transition = "0.3s";
             numList[curIndex.value].style.backgroundColor = ""; // 清空上一个数字按钮样式
+            console.log(curIndex.value)
             if (curIndex.value === 0) {
                 ulImgDom.value.style.transition = "0s";
                 curIndex.value = len.value - 1;
@@ -159,7 +161,7 @@ export default defineComponent({
 }
 
 .ul-img {
-    /* position: absolute; */
+    position: absolute;
     display: flex;
     width: 4200px;
     height: 400px;
